@@ -1,0 +1,108 @@
+## Primary/Active Sketch
+- Prefer working on `WaterMethanolController/WaterMethanolController.ino` unless the user explicitly names another version.
+
+## How To Build (Local)
+- Compile with Arduino CLI:
+  - `arduino-cli compile --fqbn esp32:esp32:esp32da .`
+  - For warnings: `arduino-cli compile --warnings all --fqbn esp32:esp32:esp32da .`
+
+## Editing Conventions
+- Avoid non-ASCII characters in strings embedded in `INDEX_HTML` (some editors/toolchains can introduce mojibake).
+- UI curve behavior should preserve monotonic increasing kPa across points.
+- When changing the web UI, update both the live UI in `WebUI.ino` and the local preview in `Preview UI/ui_preview.html`.
+- Keep `UI_THEME.md` up to date when making UI theme or button styling changes.
+- Firmware comments must be clear, full English sentences that explain intent and behavior (no abbreviations or shorthand).
+- Housekeep: remove unused/legacy code and helpers when making related changes.
+- Keep documentation aligned with code: when behavior or wiring comments change, update `MethController_User_Guide_V4.7.md` (and other relevant docs) in the same pass.
+- Settings must persist across boots unless changed in the UI or firmware.
+- Error conditions must clear on reboot (no persistence).
+- Buttons should stay at the bottom of each card.
+- Compile target: always use `arduino-cli compile --fqbn esp32:esp32:esp32da .` (ESP32-WROOM-DA).
+- UI-only changes (text, styling, layout in `WebUI.ino` and `Preview UI/ui_preview.html`) do not require a compile check unless the user explicitly asks for one.
+- UI preview must stay fully interactive for testing (mirror live UI behavior in `Preview UI/ui_preview.html`).
+- Hard rule: gauges live only in gauge cards and status tiles live only in the Status card. Do not move, duplicate, or remove gauges or cards without explicit user consent.
+- Hard rule: gauges must display the live input value (no hold-last or fallback masking). If the input is zero or missing, the gauge should show that.
+- Hard rule: remove legacy code as we go. If a feature is removed from the UI, delete its associated endpoints, handlers, and code paths. Any hard rule stated by the user must be added to AGENTS.md immediately.
+- Boost control is legacy and removed. Do not reintroduce any boost control UI, logic, or settings without explicit user consent.
+- Hard rule: update all docs each pass with any changes as we go.
+- Hard rule: do not remove code thats wired into anything without explicit consent.
+- Hard rule: do not suggest alternate solutions when asked to fix a problem. Fix the problem directly.
+- Hard rule: mDNS + STA behavior is locked in. Do not change the current STA connection flow, hostname handling, or mDNS startup behavior without explicit user consent.
+- Hard rule: always update Test Section, Live Data, and UI preview together, and keep them wired to the same signals.
+- Hard rule: all Test Section force commands are absolute bench overrides. When a force command is active, it must apply even if automatic safety logic would normally block that path.
+- Hard rule: no regressions on mDNS once it is working; lock it in.
+- Hard rule: no regressions on Wi-Fi; once it is working, lock it in.
+- Hard rule: during active bench testing, do not make any code changes without explicit user approval for that specific change.
+- Hard rule: for any Wi-Fi or mDNS changes, update `MDNS_FAILURE_MODES.md` and `MDNS_LESSONS_LEARNED.md` in the same pass and run the mDNS no-regression checks documented there.
+- Hard rule: Wi-Fi mode, station credentials, access point name, and multicast domain name system host must remain end-user updatable from the UI and persist across boots.
+- Hard rule: first connection to the UI must be achievable from firmware-entered station credentials; station retry behavior must keep reapplying the configured credentials until connection succeeds.
+- Hard rule: each newly flashed firmware build must load firmware default settings once on first boot for that build, then persist user changes across normal reboots.
+- Hard rule: document every input calibration change and every related code addition in `MethController_User_Guide_V4.7.md` and `LOCKED_BEHAVIOR_CHECKLIST.md` in the same pass.
+- Hard rule: keep `CALIBRATION_REFERENCE.md` current in the same pass for any calibration, ADC conversion, or calibration-related code change.
+- Hard rule: keep `TEST_RESULTS_MASTER.md` current with all self-testing, bench testing, and other validation results in the same pass.
+- Hard rule: never delete prior calibration test results from docs; preserve historical calibration data and clearly label it as historical if superseded.
+- Hard rule: maintain an explicit calibration coverage section in `TEST_RESULTS_MASTER.md` that calls out what is complete and what is still missing.
+- Hard rule: barometric reference is active. Capture barometric pressure once at boot early in startup, expose it in Live Data, and include it in injector differential pressure math (`rail gauge + baro - MAP absolute`). Test Section `Force Baro (kPa abs)` is allowed as a temporary bench override; negative values must disable the override and return to boot-captured barometric reference.
+- Hard rule: use the term `rail pressure sensor` in UI/docs, and keep the model assumption that one rail pressure sensor serves a rail feeding three meth injectors.
+- Hard rule: keep wording consistent across firmware comments, live UI text, preview UI text, and all docs.
+- Hard rule: use `LED` terminology consistently for red, blue, and green indicator outputs. Do not call them lamps in firmware comments, API fields, UI text, preview text, or docs.
+- Hard rule: keep UI labels, UI config keys, API fields, firmware variable naming, and documentation terminology aligned at all times; no partial naming drifts.
+- Hard rule: maintain `LOCKED_BEHAVIOR_CHECKLIST.md` as the running lock file; update it every pass when locked behavior changes and do not change locked items without explicit user consent.
+- Hard rule: keep bench validation and locked behavior consolidated in `LOCKED_BEHAVIOR_CHECKLIST.md` as the single source of truth.
+- Hard rule: during bench testing, always provide the full current test block verbatim each time before requesting the next single check.
+- Hard rule: during bench testing, board reboot actions are the assistant's responsibility. Do not ask the user to reboot the board.
+- Hard rule: calibration and ADC conversion must prioritize flash-and-go consistency across same-hardware boards for end users. Do not lock conversion logic to one specific board's lookup unless the user explicitly asks for per-board tuning.
+- Hard rule: flash-and-go calibration must remain reliable on random ESP32 boards. Keep ADC conversion on the calibrated millivolt path (`analogReadMilliVolts`) and reserve shared ADC gain/offset for residual trim only unless the user explicitly approves another architecture.
+- Hard rule: use plain 5V sensor calibration terms only. `mapLin` is MAP kPa span over 0-5V and `mapOff` is MAP kPa at 0V. Rail pressure sensor uses slope/offset fields (`pLin` in psi per volt and `pOff` in psi). Use shared ADC calibration trims (`adcGain`, `adcOffset`) for board-level correction.
+- Hard rule: calibration UI and documentation must use plain 5V sensor terminology. Do not describe calibration as HP Tuners style unless the user explicitly asks for that wording.
+- Hard rule: Status card `stReason` is `Fault History` and must show the last active safety or fault reason as persistent informational history. Active fault and latch behavior still clears on reboot.
+- Hard rule: all fault states must be clearly identifiable and uniformly displayed in Status using aligned labels between firmware status fields, live UI, and preview UI.
+- Hard rule: ADC calibration endpoints must remain meaningful. Do not reintroduce post-trim ADC clamping that makes `0.0 V` and `3.3 V` unusable as calibration anchors without explicit user consent.
+- Hard rule: fault bypass and override controls must be per-error-state (single fault path per control). Do not use a combined bypass-all control unless the user explicitly asks for it.
+- Hard rule: during bench testing, do not leak raw shell commands, tool payloads, or source code dumps into the user-facing chat box unless the user explicitly asks to see them.
+- Hard rule: never leak internal reasoning text into the user-facing chat box. If any leak occurs, stop all tool use immediately and resume only after the user confirms to continue.
+- Hard rule: keep injector differential pressure safety logic in its own tab/file (`DpMonitor.ino`) so it remains isolated and easy to review.
+- Hard rule: improve comments every pass when touching firmware logic.
+- Hard rule: write beginner-focused, highly descriptive comments in touched firmware code, including line-by-line intent where practical.
+- Hard rule: keep live UI and preview UI script code comment-free unless the user explicitly asks for UI comments.
+- Hard rule: section color mapping is locked across all sectioned cards in both live UI and preview:
+  - Section 1 `hardware` (blue), Section 2 `flow` (green), Section 3 `safety` (red).
+  - Additional sections must use unique non-repeating standard colors in order: Section 4 `tune` (amber), Section 5 `diag` (cyan).
+- Card toggle stability: keep the `toggleCard` JavaScript as real multi-line code (no literal `\n` escape sequences in the source). Escaped newlines can break card opening.
+- Always ensure logic stays intact from inputs to output, through all states.
+- Self check all logic each pass.
+- Ensure outputs work.
+- Ensure the test section injects sensor values and includes manual selection for each error state for bench testing timing and boost cut logic.
+- Test Section layout is locked; do not restructure without explicit user consent.
+- Sensor Calibration card layout is locked; do not restructure without explicit user consent.
+- Wi-Fi Settings card layout is locked; do not restructure without explicit user consent.
+- Always fully remove any dead code or legacy. If the user says it is legacy, it goes.
+
+## Docs/Tools
+- Wiring/setup guide: `WaterMethanolController/MethController_User_Guide_V4.7.md`
+- Locked behavior checklist: `WaterMethanolController/LOCKED_BEHAVIOR_CHECKLIST.md`
+- mDNS failure modes: `WaterMethanolController/MDNS_FAILURE_MODES.md`
+- mDNS lessons learned: `WaterMethanolController/MDNS_LESSONS_LEARNED.md`
+- Calibration reference: `WaterMethanolController/CALIBRATION_REFERENCE.md`
+- Test results master: `WaterMethanolController/TEST_RESULTS_MASTER.md`
+- Assistant connectivity/testing procedure: `WaterMethanolController/ASSISTANT_CONNECTIVITY_AND_TESTING_PROCEDURE.md`
+- UI preview (mock data): `WaterMethanolController/Preview UI/ui_preview.html`
+- Safety semantics: BLUE LED = low level only; GREEN LED = active methanol spray only; RED LED = boost cut only. Boost cut whenever low level; timing cut also grounds IAT (GPIO32) through a failsafe output (`HIGH` healthy, `LOW` active timing cut).
+- Presets: MAP (2/2.5/3/3.5/4 bar incl. EFIsource 3-bar), rail 0-130 psi, 100 psi stainless. Two-point rail calculator in UI.
+- Advanced tunables exposed in UI: dP arm duty, dP recover margin, dP fault delay, level debounce, target injector dP spray-enable target.
+
+## Logic Confirmation
+- Error/fault desired effects are timing cut and boost cut, but not necessarily at the same time.
+- If low level happens before spraying, only a boost cut is needed. It clears when level reads good again. Red LED comes on for boost cut, blue LED for low level. No timing cut for this condition.
+- If low level happens while actively spraying, trigger both timing cut and boost cut.
+- Spray enable is pressure-based: injectors stay blocked until live injector dP reaches the target injector dP.
+- If injector dP error happens before spraying, nothing extra happens. Only low level is valid before spraying.
+- If injector dP error happens while spraying, trigger timing cut and boost cut. Timing cut can auto-clear after 4s (user-adjustable in Settings), but boost cut can only be cleared by satisfying the level switch.
+- dP timing cut latches Boost Cut until power cycle.
+- Display the active fault in the fault gauge, status area, and serial monitor.
+- Red LED means "I am in a boost cut condition."
+- Blue LED means "I am in a low level condition."
+- Lights must clear with the conditions they are tied to.
+- A timing cut grounds the IAT and instantly throws a CEL via an SSR on the IAT signal to force a high temperature CEL used to remove timing. The GPIO32 timing-cut output is failsafe (`HIGH` healthy, `LOW` active timing cut).
+- All safeties reset on boot.
+- Anything the user says to lock in must not be changed without consent moving forward.

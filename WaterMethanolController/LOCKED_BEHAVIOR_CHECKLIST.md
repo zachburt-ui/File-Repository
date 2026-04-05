@@ -1,0 +1,550 @@
+# Locked Behavior and Bench Validation Checklist (Running)
+
+Purpose:
+- This file is the single source of truth for locked behavior and bench validation.
+- If an item here is locked, do not change it without explicit user consent.
+- Update this file in the same pass whenever locked behavior or bench validation changes.
+
+Completion rule:
+- When all bench validation checks are marked pass and accepted by the user, treat the project as complete.
+
+Field check-in (2026-03-03):
+- Test Section force behavior lock update under explicit user direction:
+  - Force Pump and Force Injectors are now absolute bench overrides and are no longer blocked by automatic safety gating.
+  - Force Injectors now bypasses pressure-ready injector blocking and pressure-ready timeout latching while active.
+- Compile validation after the force-behavior update passed on `esp32:esp32:esp32da`.
+- Barometric differential pressure update under explicit user direction:
+  - Boot now captures barometric reference early from MAP input scaling.
+  - Injector differential pressure math now uses `rail gauge + active barometric reference - manifold absolute pressure`.
+  - Live Data now includes `Baro (kPa abs)` gauge in both live UI and preview.
+  - Live Data gauge layout now uses a 4-wide baseline and fills row width when fewer gauges are present.
+  - Compile validation after barometric and layout updates passed on `esp32:esp32:esp32da`.
+  - Sensor Calibration MAP/Rail fit and quick-check tables no longer include capture buttons; ADC curve table capture remains.
+  - Final compile validation after barometric, layout, and sensor-table capture cleanup passed on `esp32:esp32:esp32da`.
+- Test Section Force Baro override update under explicit user direction:
+  - Test Section now includes `Force Baro (kPa abs)` in live UI and preview.
+  - Differential pressure math, forced dP-to-rail reconstruction, and `/api/status` baro values now use active barometric reference (boot capture unless Force Baro is set).
+  - `Force Baro` follows force-value convention: negative disables override and returns to boot-captured barometric reference.
+  - Compile validation after Force Baro override wiring passed on `esp32:esp32:esp32da` (`1170643` program bytes, `51424` RAM bytes).
+- Fault-path separation and status uniformity update under explicit user direction:
+  - Rail dP and pressure-ready timeout now use separate real timing-cut latches and separate retained boost-hold latches.
+  - Manual controls now expose separate buttons for rail dP boost hold and pressure-ready boost hold.
+  - Safety bypasses now expose separate controls for rail dP fault, pressure-ready fault, rail dP hold, and pressure-ready hold.
+  - Status now shows separate `Rail dP Fault` and `Pressure-Ready Fault` tiles.
+  - `Current Fault Status` and Live Data `Fault Status` now use one shared current-fault text source.
+  - Timing-cut auto-clear is now one shared path for all real timing-cut latches (rail dP and pressure-ready timeout).
+  - Compile validation after fault-path split and shared auto-clear refactor passed on `esp32:esp32:esp32da`.
+- Terminology alignment update under explicit user direction:
+  - User-facing term `dP Arm Settle` is now `dP Delay` in live UI, preview UI, and user guide wording.
+  - Underlying persisted config key remains `dpArmSettleMs` for backward compatibility.
+- dP default profile update under explicit user direction:
+  - Default dP fault profile now assumes a normal spray-related dP drop and avoids thresholding at the spray-enable target.
+  - Defaults now use `dP min 50`, `dP fault delay 3000 ms`, `dP recover 1.5 psi`, `critical dP 25 psi for 150 ms`, `dP delay 500 ms`, and `pressure-ready timeout 3000 ms`.
+  - `Target Injector dP` default remains `60 psi`.
+  - Compile validation after default-profile update passed on `esp32:esp32:esp32da`.
+- Rail dP state-identification update under explicit user direction:
+  - Rail dP status now exposes an explicit `Rail dP State Detail` tile in live UI and preview.
+  - `Current Fault Status` now differentiates rail dP normal-low vs critical-low timing faults and boost-hold states.
+  - Serial timing-cut reason now distinguishes rail dP normal-low (`diff_pressure_low`) versus critical-low (`diff_pressure_critical`).
+  - Compile validation after rail dP state-identification update passed on `esp32:esp32:esp32da`.
+- Fault label alignment update under explicit user direction:
+  - Live Data fault gauge label is now `Fault Status` in live UI and preview.
+  - Label rename is display-only and keeps the same unified current-fault signal source.
+- Live Data rail-gauge cleanup update under explicit user direction:
+  - `Rail Pressure (kPag)` gauge was removed from live UI and preview.
+  - `Rail Pressure (psig)` remains as the single rail pressure gauge in Live Data.
+  - Compile validation after rail-gauge cleanup passed on `esp32:esp32:esp32da`.
+- Live Data barometric and fault-visibility update under explicit user direction:
+  - Live Data now includes `Baro (psia)` in live UI and preview, in addition to `Baro (kPa abs)`.
+  - Live Data `Fault Status` gauge is now a dedicated full-width bottom row tile in live UI and preview.
+- Card toggle hitbox update under explicit user direction:
+  - Card expand/collapse now triggers only from the card title strip (`.h1`) in live UI and preview.
+  - Card body clicks no longer toggle collapse state.
+- Timing-cut output failsafe update under explicit user direction:
+  - Timing-cut output on GPIO32 now uses failsafe polarity to match the boost-cut philosophy.
+  - Healthy state is `HIGH`; active timing cut drives the output `LOW` to ground IAT.
+  - Compile validation after timing-cut output failsafe update passed on `esp32:esp32:esp32da` (`1170583` program bytes, `51424` RAM bytes).
+
+Latest field check-in (2026-04-02):
+- LED terminology and spray-status output update under explicit user direction:
+  - Red and blue indicator naming is now standardized as `LED` across firmware comments, API fields, live UI, preview UI, and docs.
+  - Added a green spray LED output on GPIO25.
+  - Green LED is on only when methanol is actually spraying (pump on and injector on-time active).
+  - Compile validation after green spray LED update passed on `esp32:esp32:esp32da` (`1170983` program bytes, `51424` bytes RAM).
+
+Latest field check-in (2026-02-23):
+- User confirmed STA Wi-Fi is connected.
+- User confirmed GPIO2 onboard Wi-Fi light works.
+- User confirmed web UI loads.
+- User confirmed mDNS works.
+- User confirmed serial output is working.
+- User confirmed cards open and function.
+- User confirmed station Wi-Fi reconnects automatically after drop.
+- User confirmed saved settings persist across reboot.
+- User confirmed Wi-Fi settings save triggers expected reboot behavior.
+- User confirmed manual boost cut latch behavior: red LED on and boost relay indicates cut state as expected.
+- User confirmed manual timing cut latch behavior is correct.
+- User confirmed forced low-level with injectors off gives blue LED on, red LED on, boost cut on, and timing cut off.
+- User confirmed manual level switch operation works as expected and clears correctly when returned.
+- User confirmed baseline after spray-command floor fix with MAP at 0V and level OK: fault reason none, blue LED off, red LED off, and boost relay in allow state.
+- User confirmed manual rail dP fault behavior: timing cut on, boost cut on, timing relay on, boost relay in cut state, red LED on, level remains OK.
+- User confirmed manual rail dP fault control clears correctly when turned off.
+- User confirmed manual dP Boost Hold latch behavior: boost cut on while timing cut stays off.
+- User confirmed manual dP Boost Hold latch clears correctly when turned off.
+- User confirmed dP Monitor Override sets dP Monitor State to OVERRIDE when other latches are off.
+- User confirmed dP Monitor Override clears back to IDLE when turned off under baseline conditions.
+- User reported a current regression: multicast domain name system host resolves in serial startup logs but `watermeth.local` is not reachable from browser.
+- User confirmed direct access by controller STA IP works, so HTTP service is reachable and issue is isolated to host-name resolution.
+- Diagnostic capture from host tools: `GET http://172.20.10.8/api/config` returns `mdnsHost=watermeth`, `ping watermeth.local` resolves to `172.20.10.8`, and `GET http://watermeth.local/` returns HTTP 200.
+- User confirmed Edge eventually reaches `watermeth.local`, with unstable first-hit behavior.
+- Host diagnostic capture after later flash: `ping watermeth.local` failed to resolve while `GET http://172.20.10.8/api/config` still returned expected Wi-Fi and host settings.
+- Reverted `WebTask.ino` mDNS reconnect lifecycle guard and restored locked one-shot mDNS startup behavior to remove reconnect-flow regression risk.
+- Implemented targeted mDNS hardening in `WebTask.ino` for resolver stability:
+  - STA retry now avoids Wi-Fi mode churn and uses `WiFi.reconnect()` first.
+  - mDNS responder health is checked with `mdns_hostname_get(...)` and restarted only if unhealthy.
+  - mDNS IPv4 re-announcement is sent on STA link-up or STA IP change.
+- Added periodic mDNS IPv4 re-announcement while STA remains connected to improve browser first-hit `.local` reliability after resolver cache expiry.
+- Firmware compile check passed after the mDNS hardening pass.
+- Direct serial capture on COM3 confirms boot path includes:
+  - `[WIFI] Station IP address: 172.20.10.8`
+  - `[MDNS] Started: watermeth.local`
+  - `[MDNS] Announced watermeth.local at 172.20.10.8`
+- Firmware was uploaded to COM3 (`arduino-cli upload -p COM3 --fqbn esp32:esp32:esp32da .`) and boot logs were re-validated after flash.
+- Host-side checks during the same session resolved and served:
+  - `Resolve-DnsName watermeth.local` -> `172.20.10.8`
+  - `HTTP GET http://watermeth.local/` -> `200`
+- Extended host-side stability run passed:
+  - `Resolve-DnsName watermeth.local` success rate `40/40`
+  - `HTTP GET http://watermeth.local/` success rate `30/30`
+- User confirmed `http://watermeth.local/` now works in both Edge and Chrome.
+- Assistant executed direct bench automation on live hardware using COM3 flash/reset, `/api/config` force controls, `/api/status` polling, and serial log capture.
+- Assistant validation pass results:
+  - Section 2.3 Pressure-Ready behavior: pass.
+  - Section 2.7 Injector dP fault before spray: pass.
+  - Section 2.8 Injector dP fault during spray: pass.
+  - Section 2.9 Injector dP critical low-pressure fast path: pass.
+  - Section 2.4 timeout fault behavior is verified when pump mode is Normal, but the current logic does not start timeout fault timing when pump is forced OFF.
+  - Section 2.6 low level during active spray currently applies boost cut and LEDs but does not assert timing cut.
+- Fixed safety logic defects found during direct bench automation:
+  - Low level during active spray now latches a low-level timing-cut trigger and keeps timing cut active while level remains low.
+  - Pressure-ready timeout timing now runs from spray request and safety state, so bench testing with Force Pump = OFF can still produce the intended timeout fault.
+- Assistant re-ran full API plus serial bench automation after flashing updated firmware on COM3:
+  - Sections 2.2 through 2.11 all passed with force-mode and fault-path checks.
+  - mDNS resolve and HTTP host-name checks passed after flash.
+- Fresh fully automated validation pass was executed again after final fixes:
+  - Compile with warnings passed.
+  - Firmware was flashed to COM3.
+  - Automated API plus serial test run executed 35 checks across Sections 1.4 and 2.2 through 2.11 with 0 failures.
+  - Post-test controller state was restored to baseline defaults (no active force modes, no active latches).
+- Additional physical-input validation with level switch intentionally unwired (open = low):
+  - Baseline with no level override showed low-level boost cut only (blue LED on, red LED on, timing cut off).
+  - During active spray with level forced OK, releasing to normal physical input (unwired low) triggered timing cut and boost cut.
+  - Serial event capture confirmed `timing_cut ON reason=level_spray` and timing cut remained active while low level persisted.
+- Persistence spot-check rerun with forced settings and reboot:
+  - `timingCutAutoMs` and `pressureReadyTimeoutMs` were changed, verified live, verified after reboot, then restored to defaults and re-verified.
+- Firmware defaults behavior updated and verified:
+  - `pressureReadyTimeoutMs` default is now 2500 ms.
+  - Each newly flashed firmware build now loads firmware defaults once on first boot, then preserves saved settings across normal reboots.
+- Live UI and preview defaults were synchronized to match firmware:
+  - Pressure-Ready Timeout now shows and applies 2500 ms in both `WebUI.ino` and `Preview UI/ui_preview.html`.
+- Current firmware was compiled, flashed to COM3, and live-checked:
+  - `/api/config` reports `pressureReadyTimeoutMs=2500` after flash.
+- Calibration documentation is now consolidated in `CALIBRATION_REFERENCE.md` and must be kept current with calibration code changes.
+- ADC conversion now uses averaged raw ADC scaling in `adcVolts(...)` with no fixed board-specific lookup table, to preserve full-range input reporting during direct-input bench calibration.
+- MAP input direct bench sweep on COM3 passed after calibrated conversion update:
+  - 0.0/0.5/1.0/1.5/2.0/2.5/3.0/3.3 V checks were within about +/-2.2 kPa of expected.
+- Rail pressure sensor input direct bench sweep on COM3 passed:
+  - 0.0/0.5/1.0/1.5/2.0/2.5/3.0/3.3 V checks were within about +/-1.0 psi of expected.
+- One-supply combined logic validation passed using force-mode sequencing:
+  - dP math cross-check passed with forced MAP and live rail input.
+  - Low level before spray passed (boost cut only).
+  - Low level during active spray passed (timing cut and boost cut), then cleared correctly when level returned OK.
+  - Injector dP low before spray passed (no timing cut, no dP fault).
+  - Pressure-ready building and pressure-ready ready transitions passed.
+  - Pressure-ready timeout fault path passed, with timing-cut auto-clear and retained boost hold until reboot.
+- Bench note for force testing:
+  - Before pressure-ready or timeout checks, set Force Injectors to OFF briefly and hold rail force low until filtered rail settles low; then start the scenario. This avoids stale pressure-ready latch from prior high-rail force values.
+- User confirmation after returning to live inputs:
+  - Level switch open correctly holds low-level boost cut.
+  - Grounding level switch correctly clears low-level boost cut.
+  - Save and reboot persistence still works.
+- Consolidated historical test record is maintained in `TEST_RESULTS_MASTER.md` (self-tests, bench tests, and host validation).
+- User noted devices are not connected yet, so safety and output behavior remains unverified on hardware.
+- 2026-02-24 assistant forced-state sweep on COM5 validated logic-state transitions using Test Section force controls and bypasses with user physical inputs held at MAP `0 V` and rail `0 V`.
+- 2026-02-24 confirmation: pressure-ready override alone bypasses pressure-ready gating and timeout logic, but dP monitor safety paths still apply; map-only spray bench mode without dP fault intervention requires pressure-ready override plus dP monitor override (or dP fault bypass).
+- 2026-02-24 documentation sync: calibration evidence was consolidated with explicit coverage in `TEST_RESULTS_MASTER.md`, and `CALIBRATION_REFERENCE.md` now distinguishes historical unity-trim sweeps from the active shared-trim default expected curves.
+- 2026-02-24 comment-only maintenance pass completed across firmware and UI script sources (`WaterMethanolController.ino`, `Api.ino`, `Prefs.ino`, `Timers.ino`, `WebSocket.ino`, `WebTask.ino`, `WebUI.ino`, `Preview UI/ui_preview.html`) with no behavior or wiring logic changes.
+- 2026-02-24 UI script comment policy update: live UI and preview UI JavaScript were returned to comment-free formatting by user request, with no behavior changes.
+- 2026-02-24 assistant full self-test sweep completed on live controller with no user inputs: 18/18 checks passed, including API force-state matrix, ADC trim round-trip, mDNS plus HTTP reachability, WebSocket status stream smoke test, and assistant-managed reboot persistence verification for serial period (`sper`) with restore.
+- 2026-02-24 final-sweep fixes applied under explicit approval:
+  - UI save path now preserves valid numeric zero values for affected fields in both `WebUI.ino` and `Preview UI/ui_preview.html`.
+  - Serial debug now remains firmware-default ON on first boot but correctly honors saved `sdbg` preference across reboots.
+  - Spray-curve API sanitation now enforces strictly increasing kPa points, and interpolation guards zero-width segments.
+  - Captive redirect now targets the request-interface local IP with STA/AP fallback order.
+  - GPIO2 Wi-Fi LED now indicates active controller connectivity (STA connected or AP has at least one client).
+- 2026-02-24 mDNS no-regression gate re-run after Wi-Fi-touching changes:
+  - Serial boot capture includes STA IP line and `[MDNS] Started` line.
+  - `GET /api/config` confirms expected `mdnsHost`.
+  - `http://<sta-ip>/` and `http://<mdnsHost>.local/` both load before and after assistant-managed reboot.
+- 2026-02-24 STA first-connection reconnect hardening applied under explicit user approval:
+  - `WebTask.ino` STA retry now always reapplies explicit `WiFi.begin(sta_ssid, sta_pass)` after queuing `WiFi.reconnect()` so retries always use configured credentials from firmware defaults or saved preferences.
+  - Compile validation passed (`arduino-cli compile --fqbn esp32:esp32:esp32da .` and warnings build).
+  - Host-side mDNS no-regression checks are currently pending live controller connectivity; direct checks from this host to `watermeth.local` and recent STA IPs did not reach a live device in this session.
+- 2026-02-26 Sensor Calibration live precision display update under explicit user approval:
+  - Added a two-decimal live gauge pair in Sensor Calibration for MAP (kPa abs) and rail pressure (psig).
+  - The new Sensor Calibration gauges are wired to the same live status signals as the main Live Data card.
+  - dP and spray command were intentionally excluded from this calibration gauge pair per user direction.
+  - Compile validation passed (`arduino-cli compile --fqbn esp32:esp32:esp32da .` and warnings build).
+- 2026-02-27 Sensor Calibration readability stabilization update under explicit user approval:
+  - Added short display-only smoothing for the two-decimal MAP and rail gauges in Sensor Calibration.
+  - Smoothing is limited to calibration gauge rendering in live UI and preview and does not change control-loop or safety behavior.
+- 2026-02-27 ADC endpoint-calibration validity update under explicit user approval:
+  - Removed post-trim ADC clamping in `ControlLoop.ino` so shared ADC gain and offset correction remains linear through endpoints.
+  - Endpoint calibration at `0.0 V` and `3.3 V` is now valid with the current ADC correction path.
+- 2026-02-28 cross-board ADC consistency update under explicit user approval:
+  - `adcVolts(...)` now averages calibrated millivolt reads from `analogReadMilliVolts(...)` to use the ESP32 calibration path for random-board deployment consistency.
+  - Shared ADC startup defaults were reset to neutral (`adcGain=1.0000`, `adcOffset=0.000`) in firmware, live UI, and preview UI.
+  - Existing shared ADC gain and offset workflow remains in place for residual board-level trim after neutral startup.
+  - Compile validation passed (`arduino-cli compile --fqbn esp32:esp32:esp32da .` and warnings build).
+- 2026-02-28 shared multi-point ADC curve calibration update under explicit user approval:
+  - Added shared piecewise ADC curve correction for both MAP and rail conversion paths after shared gain/offset trim.
+  - Curve breakpoints are fixed at `0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.3 V`.
+  - Curve endpoints are hard-locked to `0.0 V` and `3.3 V`; midpoint outputs are monotonic and persisted.
+  - Sensor Calibration card now includes a multi-point table for per-breakpoint MAP/rail data entry and one-click curve fitting.
+  - Live UI and preview UI were updated together and keep identical fitting behavior.
+- 2026-03-01 flash baseline ADC curve update for Barry reflash:
+  - Firmware default shared ADC curve output points are now:
+    - `[0.0, 0.4850, 0.9820, 1.4800, 1.9770, 2.4610, 2.9730, 3.3]`
+  - Live UI and preview UI default presets were synchronized to the same curve values.
+  - Shared ADC gain and offset startup defaults remain neutral (`adcGain=1.0000`, `adcOffset=0.000`).
+- 2026-03-02 ADC preset revert update under explicit user approval:
+  - Shared ADC curve startup defaults were restored to identity:
+    - `[0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.3]`
+  - Barry-specific startup curve values are retained as historical notes only.
+  - Live UI and preview UI default presets were synchronized to identity.
+- 2026-02-28 Sensor Equation table-entry fit update under explicit user approval:
+  - Sensor Calibration Section 2 now includes MAP and rail point-entry tables for direct equation fitting.
+  - MAP table uses `volts + kPa` points and applies fitted `mapLin/mapOff`.
+  - Rail table uses `volts + psi` points and applies fitted `pLin/pOff`.
+  - Live UI and preview UI were updated together and remain behavior-matched.
+- 2026-03-02 sensor equation table range and expected-reference update under explicit user approval:
+  - MAP point-entry table range is now `0.5-4.5 V`.
+  - Rail point-entry table range is `0.5-4.5 V` to match standard usable rail pressure sensor output range.
+  - MAP and rail tables each include a third expected-value reference column computed from current equation fields.
+  - Sensor Equation Values quick check is split into `MAP Quick Check` and `Rail Quick Check` tables with computed expected values and `% error`.
+  - MAP fit, rail fit, MAP quick-check, and rail quick-check tables now include per-row `Capture` buttons.
+  - Quick-check capture buttons are sensor-specific and only fill the table that was captured.
+  - Superseded by later update: non-ADC sensor-table capture buttons were removed, while ADC curve table capture remains.
+  - Legacy rail two-point quick-calc controls (`P1/V1`, `P2/V2`) were removed from live UI and preview.
+  - UI note now explicitly states table voltage is measured at divider input (sensor side), and controller ADC input must stay at or below `3.3 V`.
+  - Live UI and preview UI remain behavior-matched.
+- 2026-03-02 Sensor Calibration section-order and section-name update under explicit user approval:
+  - Shared ADC section is now named `Analog Input Calibration`.
+  - Sensor Calibration required order is now explicit: `Analog Input Calibration` first, then `Preset Selection`, then `Sensor Equation Values`.
+  - Live UI and preview UI remain behavior-matched.
+- 2026-03-02 Sensor quick-check runtime guard fix under explicit user approval:
+  - Fixed quick-check `% error` rendering guard in live UI and preview so blank measured cells display `-` without runtime exceptions.
+  - Spray curve rendering remains active after Sensor Calibration table initialization.
+  - Compile validation passed (`arduino-cli compile --fqbn esp32:esp32:esp32da .`).
+- 2026-03-02 Sensor Calibration table-title readability update under explicit user approval:
+  - MAP fit, rail fit, MAP quick check, and rail quick check heading lines now use a larger dedicated title style with simplified table names in live UI and preview.
+  - Shared ADC fit table heading is now `Shared ADC Curve Table` and uses the same larger title style in live UI and preview.
+  - Compile validation passed (`arduino-cli compile --fqbn esp32:esp32:esp32da .`).
+- 2026-03-02 section color standard update under explicit user approval:
+  - Sectioned-card color sequence is now locked to non-repeating standard colors in live UI and preview:
+    - Section 1 `hardware` (blue), Section 2 `flow` (green), Section 3 `safety` (red), Section 4 `tune` (amber), Section 5 `diag` (cyan).
+  - Wi-Fi Settings now follows this standard with Section 1 `hardware`, Section 2 `flow`, Section 3 `safety`.
+  - Sensor Calibration and Settings are aligned to the same standard sequence.
+  - Layout, fields, IDs, and behavior remain unchanged.
+  - Compile validation passed (`arduino-cli compile --fqbn esp32:esp32:esp32da .`).
+- 2026-03-02 Status visual neutrality update under explicit user approval:
+  - Status card tiles now render in one neutral gray style for all status categories in live UI and preview.
+  - Status tile IDs, values, and logic wiring are unchanged.
+  - Compile validation passed (`arduino-cli compile --fqbn esp32:esp32:esp32da .`).
+- 2026-03-02 Live Data visual neutrality update under explicit user approval:
+  - Live Data gauges now render in one neutral gray style for all gauge categories in live UI and preview.
+  - Live Data gauge IDs, values, and logic wiring are unchanged.
+  - Compile validation passed (`arduino-cli compile --fqbn esp32:esp32:esp32da .`).
+- 2026-03-02 Sensor Calibration naming alignment update under explicit user approval:
+  - Section 2 title is now `Sensor Preset Selection`.
+  - Section 3 title is now `Custom Sensor Calibration`.
+  - Section 3 table headings now use section-matched wording (`Custom Sensor Calibration ...`) in live UI and preview.
+  - Sensor Calibration required-order helper text now references custom sensor calibration wording.
+  - Shared ADC helper text block now renders as a spaced bullet list for readability.
+- 2026-03-02 Sensor Calibration table typography alignment update under explicit user approval:
+  - `.cal-table-title` now matches the `Analog Input Calibration` section title typography (`13px`, `900`, `.3px`) in live UI and preview.
+- 2026-03-02 Sensor Calibration live-gauge duplication update under explicit user approval:
+  - Two-decimal calibration MAP and rail gauges are now duplicated above each Section 3 table (`MAP Fit`, `Rail Fit`, `MAP Quick Check`, `Rail Quick Check`) in live UI and preview.
+  - All duplicated gauge copies are wired to the same live signals and smoothing path as the existing calibration gauges.
+- 2026-03-02 Sensor Calibration table spacing and heading rename update under explicit user approval:
+  - Shared ADC table heading is now `Analog Input Curve Table` in live UI and preview.
+  - Added extra vertical spacing between Sensor Calibration tables by increasing `.cal-table-title` top margin.
+  - Gauge pairs remain close to their associated tables.
+- 2026-03-02 Sensor Calibration gauge density alignment update under explicit user approval:
+  - Section 3 tables now show one sensor-relevant gauge each (MAP tables show MAP gauge, rail tables show rail gauge) instead of showing both gauges above every table.
+  - Gauge placement remains tight to each associated table.
+  - Each per-table gauge row now fills full available width.
+- 2026-03-02 Sensor Calibration inter-table spacing increase update under explicit user approval:
+  - Increased `.cal-table-title` spacing again (larger top and bottom margins) to further separate table blocks.
+  - Gauge rows remain directly above and visually tied to their associated tables.
+- 2026-03-02 Settings label terminology alignment update under explicit user approval:
+  - Methanol Controller Settings and Wi-Fi Settings display `Section` labels instead of `Step` labels in live UI and preview.
+  - Settings help text that referenced `Step 2` now references `Section 2`.
+- 2026-03-02 Settings fault-state sectioning update under explicit user approval:
+  - Pressure-ready controls were moved into their own dedicated settings section (`Section 3 Pressure-Ready Fault Settings`).
+  - Methanol Controller Settings now groups fault states explicitly by section:
+    - Section 1 low level fault inputs, Section 2 rail dP fault settings, Section 3 pressure-ready fault settings.
+  - Flow model and signal/diagnostic controls remain separated in Sections 4 and 5.
+- 2026-03-02 Sensor Calibration visual consistency alignment update under explicit user approval:
+  - Calibration table blocks were aligned to a consistent structure for title, description text, gauge row placement, and inter-table spacing.
+  - Shared gauge-row classes now enforce consistent gauge spacing across calibration tables (`.cal-gauge-row.single` and `.cal-gauge-row.dual`).
+- 2026-02-28 terminology update under explicit user direction:
+  - User-facing UI wording now uses `Target Injector dP` instead of `Desired Rail dP`.
+  - UI control identifier and config field were renamed to `targetInjectorDp` in live UI and preview.
+  - API now publishes `targetInjectorDp` and still accepts legacy `desiredRailDp` on write for compatibility.
+  - Behavior and calculations are unchanged.
+  - Compile validation passed (`arduino-cli compile --fqbn esp32:esp32:esp32da .` and warnings build).
+- 2026-02-24 targeted post-sweep validation update:
+  - Previously failing targeted logic checks were re-run only (no full-suite rerun) and all passed:
+    - `logic_dp_critical_fast_fault`
+    - `logic_pressure_ready_timeout_fault`
+    - `logic_map_only_spray_with_required_overrides`
+  - Assistant post-closeout direct-IP status spot check passed (`20/20`).
+  - User session confirmation: mDNS is functioning (`watermeth.local` accepted as working in-session).
+
+Latest code audit check-in (2026-02-23):
+- Static firmware and UI review confirms locked architecture, signal routing, and safety semantics in Sections 1.2 through 1.6.
+- Spray command floor bug fixed: below Curve Start kPa now returns 0% command in firmware and UI/preview.
+- Pressure Ready status tile remains in static Status markup for both live UI and preview.
+- HTTP root and API responses now send no-cache headers so browsers fetch current UI/status after firmware updates.
+- Bench behavior in Section 2 has been validated by direct automation over COM3 plus live API checks.
+- Live UI and preview defaults are now aligned with firmware for Pressure-Ready Timeout at 2500 ms.
+- Analog input conversion now uses averaged calibrated millivolt reads in `adcVolts(...)` (`analogReadMilliVolts(...)` path) and no fixed board-specific correction table.
+- Active rail full-sweep bench run (0.0 V through 3.3 V) showed repeatable mismatch before this conversion update, then `adcVolts(...)` was corrected in firmware under explicit user approval (`fix rail cal`).
+- Rail and MAP sweep re-validation is now the next required bench step before re-locking current input calibration values.
+- Prior temporary sensor-constant overrides were used during a bench calibration iteration and are now treated as legacy notes only.
+- Locked calibration architecture is now:
+  - Keep MAP calibration in plain 5V span/offset fields (`mapLin` kPa over 0-5V and `mapOff` kPa at 0V).
+  - Keep rail pressure sensor calibration in plain slope/offset fields (`pLin` in psi/V and `pOff` in psi).
+  - Use one shared ADC trim pair for board-level correction (`adcGain`, `adcOffset`) applied to both MAP and rail inputs.
+- Shared ADC startup defaults are now locked to neutral values for cross-board flash-and-go behavior:
+  - `adcGain=1.0000`, `adcOffset=0.000`
+- Matching MAP and rail ADC startup defaults remain intentional because both channels share one board-level trim pair.
+- Live UI and preview now expose shared ADC trim sliders in Sensor Calibration, and the values persist through preferences.
+- Shared ADC sliders support click/drag and keyboard adjustment (`Arrow`, `Page Up/Down`, `Home`, `End`).
+- Shared ADC sliders now include visible tick marks and numeric scale labels in both live UI and preview.
+- Shared ADC slider ranges are locked for cross-board tolerance and match firmware sanitize bounds:
+  - `adcGain` slider: `0.8000` to `1.2000`
+  - `adcOffset` slider: `-0.500 V` to `+0.500 V`
+- Shared ADC Trim section now includes an in-card quick calibration instruction for end users:
+  - apply `0.0 V` and `3.3 V` at the sensor input and trim gain/offset to match expected endpoints.
+- Sensor Calibration card presentation is refreshed and now theme-matched to the Settings card visual language (pill header cues and grouped section blocks).
+- Wi-Fi Settings card presentation is now theme-matched to the Settings card visual language with grouped steps while preserving existing field IDs and behavior.
+- Methanol Spray Curve card presentation is now theme-matched to the Settings and Sensor Calibration cards with grouped section blocks (`Axis and Ceiling`, `Curve Preview and Table`, `Live Curve Summary`) while keeping all existing curve IDs and behavior.
+- Test Section manual fault controls are now grouped into compact sections (`Manual Fault Triggers`, `Monitor Overrides`, `Safety Bypasses`) with cleaner active-state styling and unchanged control IDs.
+- Test Section manual fault control groups now use Settings-style colored section treatment (red manual, blue override, green bypass) in both live UI and preview.
+- Test Section now uses full themed section blocks matching Settings/Sensor/Spray style for Sensor Overrides, Output Overrides, and Manual Fault Controls while preserving all existing control IDs and behavior.
+- Test Section Section 1 and Section 2 fields now use aligned control baselines so textbox and select rows stay visually lined up in both live UI and preview.
+- Live Data gauge wording now consistently uses `Fault Status` and rail differential pressure fault wording (`Rail dP Fault`) across live UI and preview.
+- Live Data now includes `Rail Pressure (psig)` gauge in both live UI and preview, driven from the live rail pressure signal.
+- Live Data now includes separate `MAP (kPa abs)` and `MAP (psia)` gauges in both live UI and preview, both driven from the same live manifold pressure signal.
+- Live Data now includes `Baro (kPa abs)` and `Baro (psia)` gauges in both live UI and preview, driven from active barometric reference (boot capture unless Force Baro override is active).
+- Live Data now includes `Boost (psi)` gauge in both live UI and preview, computed as `MAP psia - Baro psia`.
+- Live Data gauges use a 4-wide layout baseline in both live UI and preview and auto-fill row width when a row has fewer gauges.
+- Live Data `Fault Status` gauge is a dedicated full-width bottom tile in both live UI and preview.
+- Status `stReason` is now labeled `Fault History` and shows the last active safety or fault reason as persistent informational history.
+- Status includes a full-width `Current Fault Status` tile directly below `Fault History` in live UI and preview, showing active fault reason or `None`.
+- Status tiles and Live Data gauges now use one neutral gray style in both live UI and preview for consistent at-a-glance readability without changing logic or signal wiring.
+- COM5 post-flash sanity check passed for ADC trim controls:
+  - Shared `adcGain` API write/read/restore path verified.
+- Control-loop input filtering is locked to the simple baseline behavior:
+  - ADC input conversion uses 8-sample averaging.
+  - MAP and rail use exponential smoothing with `alpha=0.15`.
+  - Advanced spike and trend filtering experiments were removed after bench confirmation that instability was wiring-related.
+- ADC correction lock:
+  - Raw ADC conversion remains bounded in `adcVolts(...)`.
+  - Post-trim ADC correction in `ControlLoop.ino` remains unclamped before shared curve application so endpoint calibration stays meaningful.
+  - Shared ADC curve endpoints are locked at `0.0 V` and `3.3 V`.
+- Added `ASSISTANT_CONNECTIVITY_AND_TESTING_PROCEDURE.md` as the standard runbook for reconnecting assistant tooling and executing bench tests.
+- Spray request output gating now includes edge debounce in `ControlLoop.ino` (200 ms on delay, 800 ms off delay) to reduce pump and injector relay chatter when MAP input is noisy near curve start.
+- Replacement controller board on COM5 was flashed and validated after a hardware wiring correction:
+  - MAP at 2.2 V input now reads stable near 196 kPa.
+  - Rail pressure sensor 3-point check was repeated and locked for this board session:
+    - 0.0 V -> -16.25 psi
+    - 1.5 V -> 57.0 to 57.4 psi
+    - 3.3 V -> 140.56 psi
+  - 3.3 V rail reading repeatability was confirmed after assistant-triggered reboot (same 140.56 psi result).
+  - MAP 3-point check was repeated and locked for this board session:
+    - 0.0 V -> -11.25 kPa
+    - 2.2 V -> 194.7 to 196.2 kPa
+    - 3.3 V -> 290.31 kPa
+- COM5 one-supply inputs-to-logic validation passed with live MAP plus forced rail:
+  - MAP 0.0 V produced no spray request and no outputs.
+  - MAP 2.2 V with forced rail 120 psi produced pressure-ready spray (`pump=1`, `inj=1`) with no cuts.
+  - Opening level switch during active spray forced timing cut plus boost cut and blocked outputs.
+  - Grounding level switch cleared timing cut and boost cut and restored active spray outputs.
+- COM5 one-supply inputs-to-logic validation passed with live rail plus forced MAP:
+  - Rail 0.0 V with forced MAP 178 kPa held pressure-not-ready (`pump=1`, `inj=0`, `duty=0`) with no cuts.
+  - Rail 3.3 V with forced MAP 178 kPa reached pressure-ready spray (`pump=1`, `inj=1`, `duty=28`) with no cuts.
+  - Opening level switch during active spray forced timing cut plus boost cut and blocked outputs.
+  - Grounding level switch cleared timing cut and boost cut and restored active spray outputs.
+
+## 1) Locked Behavior Contract
+### 1.1) Wi-Fi and mDNS
+- [x] Wi-Fi mode, station credentials, access point name, and multicast domain name system host remain user-updatable in the UI.
+- [x] Wi-Fi settings persist across boots after Save.
+- [x] Current station connection flow is unchanged (no regressions).
+- [x] Current multicast domain name system startup behavior is unchanged (no regressions).
+- [x] GPIO2 onboard light indicates active controller connectivity (STA connected or AP client connected).
+
+### 1.2) IO and Outputs
+- [x] Pin map in `WaterMethanolController.ino` remains unchanged unless explicitly approved.
+- [x] Red LED indicates boost cut condition only.
+- [x] Blue LED indicates low level condition only.
+- [x] Green LED indicates actual methanol spray output only.
+- [x] Timing cut output continues to use the intake air temperature ground relay path.
+- [x] Timing-cut output uses failsafe polarity on the intake air temperature ground relay path (`HIGH` healthy, `LOW` active timing cut).
+
+### 1.3) Safety Logic
+- [x] Spray command remains 0% below Curve Start kPa (no spray request below the first curve point).
+- [x] Low level before active spray causes boost cut only (no timing cut).
+- [x] Low level during active spray causes timing cut and boost cut.
+- [x] Injector differential pressure fault before spray does not trigger timing cut.
+- [x] Injector differential pressure fault during spray triggers timing cut and boost cut.
+- [x] Injector differential pressure math uses active barometric compensation: `rail gauge + active barometric reference - manifold absolute pressure`.
+- [x] On a real injector differential pressure fault latch edge, timing cut and boost cut assert together in the same control-loop pass.
+- [x] Timing cut auto-clear uses one shared path for all real timing-cut latch sources.
+- [x] Rail dP and pressure-ready timeout boost holds remain latched until power cycle unless bypassed for bench testing.
+- [x] Spray enable is pressure-based: injectors stay blocked until desired rail differential pressure target is reached, except when Pressure-Ready Override is ON or Force Injectors is set to Force ON for bench testing.
+- [x] If pressure-ready target is not reached before timeout, a real pressure-ready timeout fault latches, except when Pressure-Ready Override is ON or Force Injectors is set to Force ON for bench testing.
+- [x] Manual latch buttons remain functional for bench testing.
+- [x] Test Section output force modes are absolute bench overrides: Force Pump and Force Injectors apply even when automatic safety logic is active.
+- [x] Error and fault latches clear on reboot (no persistence).
+
+### 1.4) Differential Pressure Monitor
+- [x] Injector differential pressure monitor logic remains isolated in `DpMonitor.ino`.
+- [x] Differential pressure monitor override in Test Section pauses automatic differential pressure monitoring only.
+- [x] Pressure-Ready Override in Test Section bypasses pressure-ready timeout and injector pressure-ready blocking while override is ON.
+- [x] Force Injectors = Force ON also bypasses pressure-ready injector blocking and pressure-ready timeout fault latching while it is active.
+- [x] Differential pressure state and fault reason remain visible in Status, Live Data fault gauge, and serial output.
+- [x] Status exposes separate rail dP and pressure-ready fault tiles and keeps labels consistent with API fields.
+- [x] Status exposes `Rail dP State Detail` so normal-low versus critical-low rail dP paths are identifiable in timing-cut and boost-hold states.
+- [x] Rail dP and pressure-ready timeout paths keep separate manual controls and separate bypass controls.
+- [x] Status `Fault History` persists the last active safety or fault reason across reboot without persisting active fault latches.
+- [x] Status `Current Fault Status` shows the live active fault reason and reads `None` when no active fault is present.
+
+### 1.5) Web UI and Preview
+- [x] Gauges stay in gauge cards only and status tiles stay in Status card only.
+- [x] Test Section layout stays unchanged.
+- [x] Sensor Calibration card layout stays unchanged.
+- [x] Wi-Fi Settings card layout stays unchanged.
+- [x] Test Section, Live Data, and Preview stay wired to the same signals and behavior.
+- [x] Boost control remains removed from UI and logic.
+- [x] Boot barometric reference capture is active and used in dP math by default (`rail gauge + active barometric reference - manifold absolute pressure`), with optional Test Section Force Baro override for bench diagnostics.
+
+### 1.6) API and Persistence
+- [x] `/api/status` and `/api/config` remain the primary live and config endpoints.
+- [x] Save persists settings and only reboots when Wi-Fi-related settings change.
+- [x] Runtime safety states remain non-persistent across power cycle.
+- [x] Each newly flashed firmware build loads firmware defaults once on first boot, then persists user settings across normal reboots.
+
+## 2) Bench Validation Procedure (Running)
+### 2.1) Before You Start
+- [x] Power controller from a safe bench supply.
+- [x] Connect to the web UI.
+- [x] Confirm serial monitor is receiving runtime logs.
+- [x] Open Status and Methanol Controller Live Data cards.
+- [x] Set all manual latch buttons OFF.
+- [x] Set Test Section to baseline:
+  - [x] Force Level Switch = Normal (open = low, grounded = OK)
+  - [x] Force Pump = Normal
+  - [x] Force Injectors = Normal
+  - [x] Forced Duty = 0
+  - [x] Force MAP, Rail, Baro, Injector dP = blank
+
+### 2.2) Baseline Healthy State
+- [x] Fault Status = OK
+- [x] Level Switch = OK
+- [x] Red LED = OFF
+- [x] Blue LED = OFF
+- [x] Green LED = OFF
+- [x] Boost Cut = OFF (Output is on though or high and this is correct)
+- [x] Timing Cut = OFF
+- [x] dP Monitor State = IDLE (or ARMED if spray is actively and validly commanded)
+
+### 2.3) Pressure-Ready Behavior
+- [x] Force Injectors = Force ON, Forced Duty = 20.
+- [x] Pressure Ready transitions BUILDING -> READY only after injector dP reaches target injector dP.
+- [x] Confirm Green LED = ON when pressure-ready is complete and spray is actively commanded.
+- [x] While forcing injectors, turn Manual Boost Cut Latch ON and confirm Pressure Ready resets to BUILDING.
+- [x] Turn Manual Boost Cut Latch OFF and confirm pressure must rebuild before spray resumes.
+- [x] Set Force Pump = Force OFF and confirm Pressure Ready stays BUILDING.
+- [x] Set Force Pump = Normal and confirm Pressure Ready returns to READY when target is reached.
+
+### 2.4) Pressure-Ready Timeout Fault
+- [x] Set Pressure-Ready Timeout to a short value (example 500 ms).
+- [x] Keep Force Injectors ON and Force Pump OFF so pressure cannot reach target.
+- [x] Confirm timeout causes rail dP fault.
+- [x] Confirm Timing Cut = ACTIVE and Boost Cut = ON.
+- [x] Confirm Fault Status reports rail dP fault.
+- [x] Confirm timing cut can auto-clear by setting, while retained boost hold remains until power cycle.
+
+### 2.5) Low Level Before Spray
+- [x] Force Level Switch = Force LOW while spray is inactive.
+- [x] Confirm Blue LED = ON.
+- [x] Confirm Red LED = ON.
+- [x] Confirm Green LED = OFF.
+- [x] Confirm Boost Cut = ON.
+- [x] Confirm Timing Cut = OFF.
+- [x] Return level to OK and confirm LEDs and boost cut clear.
+
+### 2.6) Low Level During Spray
+- [x] Force Injectors = Force ON, Forced Duty = 20, and ensure pressure-ready is complete.
+- [x] Force Level Switch = Force LOW.
+- [x] Confirm Blue LED = ON.
+- [x] Confirm Red LED = ON.
+- [x] Confirm Green LED = OFF.
+- [x] Confirm Timing Cut = ACTIVE.
+- [x] Confirm Boost Cut = ON.
+- [x] Return level to OK and confirm timing cut and boost cut clear.
+
+### 2.7) Rail dP Fault Before Spray
+- [x] Leave injectors in Normal (no spray active).
+- [x] Force injector dP low (example 0 psi).
+- [x] Confirm no timing cut.
+- [x] Confirm no boost cut.
+
+### 2.8) Rail dP Fault During Spray
+- [x] Force Injectors = Force ON, Forced Duty = 20.
+- [x] Force injector dP low (example 0 psi).
+- [x] Confirm Timing Cut = ACTIVE.
+- [x] Confirm Boost Cut = ON.
+- [x] Wait Timing Cut Auto-Clear delay and confirm timing cut clears.
+- [x] Confirm retained boost hold remains until power cycle.
+
+### 2.9) Injector dP Critical Low-Pressure Fast Fault Path
+- [x] Force Injectors = Force ON, Forced Duty = 20.
+- [x] Force injector dP below Critical dP Threshold.
+- [x] Confirm dP Monitor State transitions quickly to TIMING_CUT.
+- [x] Confirm Timing Cut = ACTIVE after Critical dP Delay.
+- [x] Confirm Boost Cut = ON and retained until power cycle.
+
+### 2.10) Manual Latch Buttons
+- [x] Manual Boost Cut Latch ON forces boost cut and red LED.
+- [x] Manual Timing Cut Latch ON forces timing cut and IAT ground output.
+- [x] Rail dP Fault ON forces timing cut and boost cut while ON.
+- [x] dP Boost Hold latch ON forces boost cut without timing cut.
+- [x] dP Monitor Override ON pauses automatic dP monitoring and reports OVERRIDE when no fault or hold is active.
+- [x] Pressure-Ready Override ON bypasses pressure-ready timeout/injector blocking and allows spray output testing from MAP demand.
+- [x] Turning all latches OFF clears manual latch effects.
+
+### 2.11) Wi-Fi and mDNS Validation
+- [x] Change Wi-Fi settings in UI, Save, and confirm expected reboot behavior.
+- [x] Confirm settings persist across reboot.
+- [x] Confirm station reconnect behavior remains stable.
+- [x] Confirm multicast domain name system behavior remains stable.
+
+## 3) Sign-Off
+- [x] All locked behavior items remain true.
+- [x] All bench validation items pass.
+- [x] User accepts current behavior as locked.
