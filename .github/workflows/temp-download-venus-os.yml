@@ -1,0 +1,31 @@
+name: Temporary Venus OS Download
+
+on:
+  push:
+    branches:
+      - temp-venus-os-download
+  workflow_dispatch:
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download official Cerbo GX MK2 Venus OS Large firmware
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifact
+          curl -L --fail --retry 5 --retry-delay 5 \
+            -o artifact/venus-swu-large-einstein-20260624163305-v3.75.swu \
+            https://updates.victronenergy.com/feeds/venus/release/images/einstein/venus-swu-large-einstein-20260624163305-v3.75.swu
+          ls -lh artifact/venus-swu-large-einstein-20260624163305-v3.75.swu
+          sha256sum artifact/venus-swu-large-einstein-20260624163305-v3.75.swu | tee artifact/SHA256SUMS.txt
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: venus-os-large-einstein-v3.75
+          path: artifact/
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
